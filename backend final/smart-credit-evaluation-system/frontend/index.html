@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Credit Evaluation Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            padding: 40px;
+        }
+        .container {
+            background: white;
+            max-width: 600px;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #eef;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>AI Credit Evaluation System</h2>
+
+    <select id="business_type">
+        <option value="Manufacturing">Manufacturing</option>
+        <option value="Trading">Trading</option>
+        <option value="Services">Services</option>
+    </select>
+
+    <input type="number" id="years_in_operation" placeholder="Years in Operation">
+    <input type="number" id="annual_revenue" placeholder="Annual Revenue">
+    <input type="number" id="monthly_cashflow" placeholder="Monthly Cashflow">
+    <input type="number" id="loan_amount_requested" placeholder="Loan Amount Requested">
+    <input type="number" id="credit_score" placeholder="Credit Score">
+    <input type="number" id="existing_loans" placeholder="Existing Loans">
+    <input type="number" step="0.01" id="debt_to_income_ratio" placeholder="Debt-to-Income Ratio">
+    <input type="number" id="collateral_value" placeholder="Collateral Value">
+
+    <select id="repayment_history">
+        <option value="Good">Good</option>
+        <option value="Average">Average</option>
+        <option value="Poor">Poor</option>
+    </select>
+
+    <button onclick="submitApplication()">Evaluate Credit</button>
+
+    <div class="result" id="result"></div>
+</div>
+
+<script>
+function submitApplication() {
+
+    const data = {
+        business_type: document.getElementById("business_type").value,
+        years_in_operation: Number(document.getElementById("years_in_operation").value),
+        annual_revenue: Number(document.getElementById("annual_revenue").value),
+        monthly_cashflow: Number(document.getElementById("monthly_cashflow").value),
+        loan_amount_requested: Number(document.getElementById("loan_amount_requested").value),
+        credit_score: Number(document.getElementById("credit_score").value),
+        existing_loans: Number(document.getElementById("existing_loans").value),
+        debt_to_income_ratio: Number(document.getElementById("debt_to_income_ratio").value),
+        collateral_value: Number(document.getElementById("collateral_value").value),
+        repayment_history: document.getElementById("repayment_history").value
+    };
+
+    fetch("http://127.0.0.1:8000/predict", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        const div = document.getElementById("result");
+        div.style.display = "block";
+        const reasonsHtml = result.reasons
+    ? "<ul>" + result.reasons.map(r => `<li>${r}</li>`).join("") + "</ul>"
+    : "<p>No detailed reasons available.</p>";
+    div.innerHTML = `
+    <h3>Credit Decision</h3>
+
+    <p><b>Decision:</b> ${result.decision}</p>
+    <p><b>Risk Level:</b> ${result.risk_level}</p>
+
+    <p><b>Default Probability:</b> ${
+        typeof result.default_probability === "number"
+            ? result.default_probability.toFixed(2) + "%"
+            : result.default_probability
+    }</p>
+
+    <p><b>Risk Score:</b> ${
+        typeof result.risk_score === "number"
+            ? result.risk_score.toFixed(2)
+            : result.risk_score
+    }</p>
+
+    <h4>Reasons</h4>
+    ${reasonsHtml}
+`;
+
+    })
+    .catch(error => {
+        alert("Error connecting to backend!");
+        console.error(error);
+    });
+}
+</script>
+
+</body>
+</html>
+
