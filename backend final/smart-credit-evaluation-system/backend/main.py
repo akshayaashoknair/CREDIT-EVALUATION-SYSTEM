@@ -7,9 +7,10 @@ import pandas as pd
 import datetime
 import json
 
+
 from database.db import SessionLocal
 from database.models import CreditApplication as CreditApplicationDB
-
+from backend.routes import document_upload
 
 # -------------------------------------------------
 # APP INIT
@@ -23,6 +24,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(document_upload.router)
 
 # -------------------------------------------------
 # LOAD ARTIFACTS
