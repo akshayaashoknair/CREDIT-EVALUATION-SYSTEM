@@ -1,49 +1,41 @@
-import os
-import shutil
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from typing import Dict, Any
+
 from backend.services.document_reader import extract_text_from_pdf
+from backend.services.document_reader import parse_bank_statement
 
-router = APIRouter(prefix="/upload-document", tags=["Document Upload"])
+router = APIRouter()
 
-UPLOAD_DIR = "temp_uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-@router.post("/")
+@router.post("/upload-document")
 async def upload_document(
     file: UploadFile = File(...),
     document_type: str = Form(...)
-):
-    # Validate document type
-    allowed_types = {
-        "bank_statement",
-        "profit_and_loss",
-        "balance_sheet",
-        "loan_summary",
-        "tax_filing"
-    }
+) -> Dict[str, Any]:
 
-    if document_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Invalid document type")
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file uploaded")
 
-    # Validate file type
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files supported in Phase 3A")
-
-    # Save file temporarily
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
+    # ✅ READ FILE BYTES (CRITICAL)
     try:
-        extracted_text = extract_text_from_pdf(file_path)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Failed to read PDF")
+        content = await file.read()
+        result = extract_text_from_pdf(content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    # Cleanup
-    os.remove(file_path)
+    extracted_fields = {}
+    confidence = {}
+    warnings = []
 
-    # TEMP RESPONSE (for Phase 3A testing)
+    # ✅ BANK STATEMENT PARSING
+    if document_type == "bank_statement":
+        extracted_fields, confidence, warnings = parse_bank_statement(
+            result.get("raw_text_preview", "")
+        )
+
     return {
         "document_type": document_type,
-        "extracted_text_preview": extracted_text[:1000]  # limit size
+        "extracted_fields": extracted_fields,
+        "confidence": confidence,
+        "warnings": warnings,
+        "raw_text_preview": result.get("raw_text_preview", "")
     }

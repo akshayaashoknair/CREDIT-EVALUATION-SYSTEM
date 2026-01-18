@@ -91,14 +91,19 @@ const LoanApplication = () => {
 
   /* ---------------- DOCUMENT UPLOAD ---------------- */
   const handleDocumentUpload = async () => {
-    if (!selectedFile || !documentType) {
-      toast({
-        title: "Missing information",
-        description: "Please select a document type and file.",
-        variant: "destructive",
-      });
-      return;
-    }
+	  console.log("UPLOAD BUTTON CLICKED", { documentType, selectedFile });
+
+	  if (!documentType || !selectedFile) {
+		console.log("BLOCKED BEFORE FETCH");
+		toast({
+		  title: "Missing information",
+		  description: "Please select a document type and file.",
+		  variant: "destructive",
+		});
+		return;
+	  }
+
+	  console.log("PASSING VALIDATION, CALLING FETCH");
 
     const formDataPayload = new FormData();
     formDataPayload.append("file", selectedFile);
@@ -107,17 +112,22 @@ const LoanApplication = () => {
     try {
       setUploadLoading(true);
 
-      const response = await fetch(
-        "http://127.0.0.1:8000/upload-document",
-        {
-          method: "POST",
-          body: formDataPayload,
-        }
-      );
+      console.log("ABOUT TO SEND FETCH REQUEST");
+	  const response = await fetch(
+		"http://127.0.0.1:8000/upload-document/",
+		{
+			method: "POST",
+			body: formDataPayload,
+		}
+	);
+
+	console.log("FETCH SENT, status:", response.status);
+
 
       if (!response.ok) throw new Error("Extraction failed");
 
       const data = await response.json();
+	  console.log("BACKEND RESPONSE:", data);
 
       setFormData((prev) => ({
         ...prev,
@@ -194,7 +204,7 @@ const LoanApplication = () => {
                   Upload Financial Document (Optional)
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Auto-fill form fields using uploaded documents. Please verify
+                  Auto-fill form fields using uploaded documents (preferably a bank statement). Please verify
                   all values.
                 </p>
 
@@ -232,13 +242,16 @@ const LoanApplication = () => {
                 />
 
                 <Button
-                  type="button"
-                  onClick={handleDocumentUpload}
-                  disabled={!documentType || !selectedFile || uploadLoading}
-                  className="rounded-lg border border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50"
-                >
-                  {uploadLoading ? "Extracting..." : "Upload & Auto-Fill"}
-                </Button>
+				  type="button"
+				  variant="secondary"
+				  disabled={!documentType || !selectedFile || uploadLoading}
+				  onClick={(e) => {
+					e.preventDefault();
+					handleDocumentUpload();
+				  }}
+				>
+				  {uploadLoading ? "Extracting..." : "Upload & Auto-Fill"}
+				</Button>
               </div>
 
               {/* FORM FIELDS */}
