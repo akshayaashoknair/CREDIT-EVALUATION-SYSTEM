@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  TrendingUp,
-  ArrowRight,
-} from "lucide-react";
+import { TrendingUp, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +26,6 @@ import { submitLoanApplication } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 /* ---------------- BACKEND-ALIGNED FORM TYPE ---------------- */
-
 interface LoanApplicationForm {
   business_type: string;
   years_in_operation: number;
@@ -37,8 +33,8 @@ interface LoanApplicationForm {
   monthly_cashflow: number;
   loan_amount_requested: number;
   credit_score: number;
-  existing_loans: number;          // COUNT
-  debt_to_income_ratio: number;    // PERCENT INPUT (converted later)
+  existing_loans: number;
+  debt_to_income_ratio: number;
   collateral_value: number;
   repayment_history: string;
 }
@@ -58,65 +54,31 @@ const LoanApplication = () => {
     loan_amount_requested: 0,
     credit_score: 0,
     existing_loans: 0,
-    debt_to_income_ratio: 0, // % entered by user
+    debt_to_income_ratio: 0,
     collateral_value: 0,
     repayment_history: "Good",
   });
 
-  /* ---------------- BASIC VALIDATION ---------------- */
+  /* ---------------- DOCUMENT UPLOAD STATES ---------------- */
+  const [documentType, setDocumentType] = useState<string>("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadLoading, setUploadLoading] = useState<boolean>(false);
 
+  /* ---------------- VALIDATION ---------------- */
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-
     if (formData.annual_revenue <= 0) newErrors.annual_revenue = "Required";
-    if (formData.loan_amount_requested <= 0) newErrors.loan_amount_requested = "Required";
+    if (formData.loan_amount_requested <= 0)
+      newErrors.loan_amount_requested = "Required";
     if (formData.credit_score < 300 || formData.credit_score > 900)
       newErrors.credit_score = "Must be between 300 and 900";
     if (formData.existing_loans < 0 || formData.existing_loans > 20)
       newErrors.existing_loans = "Must be between 0 and 20";
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  /* ---------------- SUBMIT ---------------- */
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    setIsLoading(true);
-
-    const payload = {
-      business_type: formData.business_type.trim(),
-      years_in_operation: Number(formData.years_in_operation),
-      annual_revenue: Number(formData.annual_revenue),
-      monthly_cashflow: Number(formData.monthly_cashflow),
-      loan_amount_requested: Number(formData.loan_amount_requested),
-      credit_score: Number(formData.credit_score),
-      existing_loans: Number(formData.existing_loans), // COUNT
-      debt_to_income_ratio: Number(formData.debt_to_income_ratio) / 100, // % → decimal
-      collateral_value: Number(formData.collateral_value),
-      repayment_history: formData.repayment_history.trim(),
-    };
-
-    console.log("PAYLOAD SENT TO BACKEND:", payload);
-
-    try {
-      const result = await submitLoanApplication(payload);
-      navigate("/result", { state: result });
-    } catch (error: any) {
-      console.error("Backend error:", error.message);
-      toast({
-        title: "Risk evaluation failed",
-        description: "Backend rejected the request. Check input values.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  /* ---------------- INPUT HANDLER ---------------- */
   const handleInputChange = (
     field: keyof LoanApplicationForm,
     value: number | string
@@ -127,176 +89,186 @@ const LoanApplication = () => {
     }
   };
 
-  /* ---------------- UI ---------------- */
+  /* ---------------- DOCUMENT UPLOAD ---------------- */
+  const handleDocumentUpload = async () => {
+    if (!selectedFile || !documentType) {
+      toast({
+        title: "Missing information",
+        description: "Please select a document type and file.",
+        variant: "destructive",
+      });
+      return;
+    }
 
+    const formDataPayload = new FormData();
+    formDataPayload.append("file", selectedFile);
+    formDataPayload.append("document_type", documentType);
+
+    try {
+      setUploadLoading(true);
+
+      const response = await fetch(
+        "http://127.0.0.1:8000/upload-document",
+        {
+          method: "POST",
+          body: formDataPayload,
+        }
+      );
+
+      if (!response.ok) throw new Error("Extraction failed");
+
+      const data = await response.json();
+
+      setFormData((prev) => ({
+        ...prev,
+        ...(data.annual_revenue && { annual_revenue: data.annual_revenue }),
+        ...(data.monthly_cashflow && {
+          monthly_cashflow: data.monthly_cashflow,
+        }),
+        ...(data.collateral_value && {
+          collateral_value: data.collateral_value,
+        }),
+        ...(data.existing_loans && {
+          existing_loans: data.existing_loans,
+        }),
+      }));
+
+      toast({
+        title: "Document processed",
+        description: "Fields auto-filled. Please review before submission.",
+      });
+    } catch {
+      toast({
+        title: "Upload failed",
+        description: "Could not extract data from document.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  /* ---------------- SUBMIT ---------------- */
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    try {
+      const result = await submitLoanApplication({
+        ...formData,
+        debt_to_income_ratio: formData.debt_to_income_ratio / 100,
+      });
+      navigate("/result", { state: result });
+    } catch {
+      toast({
+        title: "Risk evaluation failed",
+        description: "Backend rejected the request.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /* ---------------- UI ---------------- */
   return (
     <Layout>
-      <div className="mx-auto max-w-2xl animate-fade-in">
-        <Card className="shadow-elevated">
-          <CardHeader className="border-b bg-muted/30">
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
+      <div className="mx-auto max-w-2xl py-10 animate-fade-in">
+        <Card className="rounded-2xl shadow-xl border border-indigo-100 bg-white/80 backdrop-blur-md">
+          <CardHeader className="rounded-t-2xl bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border-b">
+            <CardTitle className="flex items-center gap-2 text-indigo-700">
+              <TrendingUp className="h-5 w-5 text-indigo-500" />
               Loan Application
             </CardTitle>
             <CardDescription>
-              Submit details for AI-powered credit risk evaluation
+              AI-assisted credit risk evaluation for business loans
             </CardDescription>
           </CardHeader>
 
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* DOCUMENT UPLOAD */}
+              <div className="rounded-xl border border-indigo-100 p-5 bg-gradient-to-br from-indigo-50 to-purple-50 space-y-4">
+                <h3 className="text-sm font-semibold text-indigo-700">
+                  Upload Financial Document (Optional)
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Auto-fill form fields using uploaded documents. Please verify
+                  all values.
+                </p>
 
-              {/* Business Type */}
-              <div className="space-y-2">
-                <Label>Business Type</Label>
                 <Select
-                  value={formData.business_type}
-                  onValueChange={(v) => handleInputChange("business_type", v)}
+                  value={documentType}
+                  onValueChange={(v) => setDocumentType(v)}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select document type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Manufacturing">Manufacturing</SelectItem>
-                    <SelectItem value="Trading">Trading</SelectItem>
-                    <SelectItem value="Services">Services</SelectItem>
+                    <SelectItem value="bank_statement">
+                      Bank Statement
+                    </SelectItem>
+                    <SelectItem value="profit_and_loss">
+                      Profit & Loss Statement
+                    </SelectItem>
+                    <SelectItem value="balance_sheet">
+                      Balance Sheet
+                    </SelectItem>
+                    <SelectItem value="loan_summary">Loan Summary</SelectItem>
+                    <SelectItem value="tax_filing">Tax Filing</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-			  
-			  {/* Years in Operation */}
-				<div className="space-y-2">
-				  <Label htmlFor="years_in_operation">Years in Operation</Label>
-				  <Input
-					id="years_in_operation"
-					type="number"
-					min={0}
-					value={formData.years_in_operation || ''}
-					onChange={(e) =>
-					  handleInputChange(
-						'years_in_operation',
-						Number(e.target.value)
-					  )
-					}
-				  />
-				</div>
 
-
-              {/* Annual Revenue */}
-              <div className="space-y-2">
-                <Label>Annual Revenue (₹)</Label>
                 <Input
-                  type="number"
-                  value={formData.annual_revenue || ""}
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  className="rounded-lg focus-visible:ring-indigo-300"
                   onChange={(e) =>
-                    handleInputChange("annual_revenue", Number(e.target.value))
+                    setSelectedFile(
+                      e.target.files ? e.target.files[0] : null
+                    )
                   }
                 />
-              </div>
-			  
-			  {/* Monthly Cashflow */}
-			<div className="space-y-2">
-			  <Label htmlFor="monthly_cashflow">Monthly Cashflow (₹)</Label>
-			  <Input
-				id="monthly_cashflow"
-				type="number"
-				value={formData.monthly_cashflow || ''}
-				onChange={(e) =>
-				  handleInputChange(
-					'monthly_cashflow',
-					Number(e.target.value)
-				  )
-				}
-			  />
-			</div>
 
-
-              {/* Loan Amount */}
-              <div className="space-y-2">
-                <Label>Loan Amount Requested (₹)</Label>
-                <Input
-                  type="number"
-                  value={formData.loan_amount_requested || ""}
-                  onChange={(e) =>
-                    handleInputChange("loan_amount_requested", Number(e.target.value))
-                  }
-                />
-              </div>
-
-              {/* Credit Score */}
-              <div className="space-y-2">
-                <Label>Credit Score (300–900)</Label>
-                <Input
-                  type="number"
-                  min={300}
-                  max={900}
-                  value={formData.credit_score || ""}
-                  onChange={(e) =>
-                    handleInputChange("credit_score", Number(e.target.value))
-                  }
-                />
-              </div>
-
-              {/* Existing Loans */}
-              <div className="space-y-2">
-                <Label>Existing Loans (Count)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={20}
-                  value={formData.existing_loans || ""}
-                  onChange={(e) =>
-                    handleInputChange("existing_loans", Number(e.target.value))
-                  }
-                />
-              </div>
-
-              {/* Debt-to-Income Ratio */}
-              <div className="space-y-2">
-                <Label>Debt-to-Income Ratio (%)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.debt_to_income_ratio || ""}
-                  onChange={(e) =>
-                    handleInputChange("debt_to_income_ratio", Number(e.target.value))
-                  }
-                />
-              </div>
-
-              {/* Collateral */}
-              <div className="space-y-2">
-                <Label>Collateral Value (₹)</Label>
-                <Input
-                  type="number"
-                  value={formData.collateral_value || ""}
-                  onChange={(e) =>
-                    handleInputChange("collateral_value", Number(e.target.value))
-                  }
-                />
-              </div>
-
-              {/* Repayment History */}
-              <div className="space-y-2">
-                <Label>Repayment History</Label>
-                <Select
-                  value={formData.repayment_history}
-                  onValueChange={(v) =>
-                    handleInputChange("repayment_history", v)
-                  }
+                <Button
+                  type="button"
+                  onClick={handleDocumentUpload}
+                  disabled={!documentType || !selectedFile || uploadLoading}
+                  className="rounded-lg border border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50"
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Good">Good</SelectItem>
-                    <SelectItem value="Average">Average</SelectItem>
-                    <SelectItem value="Poor">Poor</SelectItem>
-                  </SelectContent>
-                </Select>
+                  {uploadLoading ? "Extracting..." : "Upload & Auto-Fill"}
+                </Button>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              {/* FORM FIELDS */}
+              {[
+                ["Annual Revenue (₹)", "annual_revenue"],
+                ["Monthly Cashflow (₹)", "monthly_cashflow"],
+                ["Loan Amount Requested (₹)", "loan_amount_requested"],
+                ["Credit Score", "credit_score"],
+                ["Existing Loans", "existing_loans"],
+                ["Debt-to-Income Ratio (%)", "debt_to_income_ratio"],
+                ["Collateral Value (₹)", "collateral_value"],
+              ].map(([label, field]) => (
+                <div key={field} className="space-y-2">
+                  <Label>{label}</Label>
+                  <Input
+                    type="number"
+                    value={(formData as any)[field] || ""}
+                    onChange={(e) =>
+                      handleInputChange(field as any, Number(e.target.value))
+                    }
+                    className="rounded-lg focus-visible:ring-indigo-300"
+                  />
+                </div>
+              ))}
+
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-lg hover:opacity-90"
+              >
                 {isLoading ? (
                   <>
                     <LoadingSpinner size="sm" />
