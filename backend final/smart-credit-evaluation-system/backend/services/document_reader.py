@@ -1,6 +1,7 @@
 import pdfplumber
 import pytesseract
 import re
+from pdf2image import convert_from_bytes
 from collections import defaultdict
 from datetime import datetime
 from statistics import mean
@@ -28,52 +29,36 @@ def extract_text_from_document(file) -> str:
 
 def extract_text_from_pdf(content: bytes) -> dict:
     raw_text = ""
+    table_text = ""
 
     with pdfplumber.open(io.BytesIO(content)) as pdf:
         for page in pdf.pages:
-            page_text = page.extract_text()
-            if page_text:
-                raw_text += page_text + "\n"
+            text = page.extract_text()
+            if text:
+                raw_text += text + "\n"
 
-    normalized = normalize_text(raw_text)
+            tables = page.extract_tables()
+            for table in tables:
+                for row in table:
+                    if row:
+                        table_text += " ".join(cell for cell in row if cell) + "\n"
 
-    extracted_fields = {}
-    confidence = {}
-    warnings = []
+    combined = normalize_text(raw_text + "\n" + table_text)
 
-    # -----------------------------
-    # BANK STATEMENT CASHFLOW LOGIC
-    # -----------------------------
+    # 🔥 FORCE OCR if transaction structure missing
+    TRANSACTION_HINTS = ["deposit", "withdrawal", "credit", "debit", "balance"]
 
-    credit_pattern = re.compile(
-        r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}).*?(CR|CREDIT).*?([\d,]+\.\d{2})",
-        re.IGNORECASE
-    )
-
-    monthly_totals = defaultdict(float)
-    matches = credit_pattern.findall(normalized)
-
-    for date_str, _, amount in matches:
-        try:
-            date = datetime.strptime(date_str, "%d/%m/%Y")
-            value = float(amount.replace(",", ""))
-            month_key = date.strftime("%Y-%m")
-            monthly_totals[month_key] += value
-        except Exception:
-            continue
-
-    if monthly_totals:
-        avg_monthly_cashflow = sum(monthly_totals.values()) / len(monthly_totals)
-        extracted_fields["monthly_cashflow"] = round(avg_monthly_cashflow, 2)
-        confidence["monthly_cashflow"] = 0.75
-    else:
-        warnings.append("Could not reliably detect monthly cashflow")
+    if not any(h in combined.lower() for h in TRANSACTION_HINTS):
+        print("🔥 OCR FALLBACK TRIGGERED")
+        images = convert_from_bytes(content)
+        ocr_text = ""
+        for img in images:
+            ocr_text += pytesseract.image_to_string(img) + "\n"
+        combined = normalize_text(combined + "\n" + ocr_text)
 
     return {
-        "raw_text_preview": normalized[:500],
-        "extracted_fields": extracted_fields,
-        "confidence": confidence,
-        "warnings": warnings,
+        "raw_text": combined,
+        "raw_text_preview": combined[:500]
     }
 
 
@@ -151,13 +136,27 @@ def parse_bank_statement(text: str):
             continue
             
         # 📅 Try extracting date
-        date_match = re.search(r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})", line)
-        if not date_match:
-            continue
+        date = None
+
+        # Format 1: 16/06/2019 or 16-06-2019
+        numeric_date = re.search(r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})", line)
+
+        # Format 2: 16 Jun 19
+        text_date = re.search(
+            r"(\d{1,2}\s+[A-Za-z]{3}\s+\d{2})",
+            line
+        )
 
         try:
-            date = datetime.strptime(date_match.group(1), "%d/%m/%Y")
+            if numeric_date:
+                date = datetime.strptime(numeric_date.group(1), "%d/%m/%Y")
+            elif text_date:
+                date = datetime.strptime(text_date.group(1), "%d %b %y")
+            else:
+                continue
+
             month_key = date.strftime("%Y-%m")
+
         except Exception:
             continue
 
