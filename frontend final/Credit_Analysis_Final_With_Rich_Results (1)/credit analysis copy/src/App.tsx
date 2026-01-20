@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import RiskResult from "./pages/RiskResult";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+import Report from "@/pages/Report";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +22,7 @@ const App = () => (
           <Route path="/result" element={<RiskResult />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="*" element={<NotFound />} />
+		  <Route path="/report/:id" element={<Report />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

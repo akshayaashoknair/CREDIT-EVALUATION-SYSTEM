@@ -213,6 +213,7 @@ const Dashboard = () => {
                     <TableHead className="text-center">Credit Score</TableHead>
                     <TableHead className="text-center">Risk Level</TableHead>
                     <TableHead>Date</TableHead>
+					<TableHead className="text-center">Report</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -234,6 +235,15 @@ const Dashboard = () => {
                       <TableCell>
                         {formatDate(app.created_at)}
                       </TableCell>
+					  <TableCell className="text-center">
+						  <Button
+							size="sm"
+							variant="outline"
+							onClick={() => navigate(`/report/${app.application_id}`)}
+						  >
+							View AI Report
+						  </Button>
+						</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
