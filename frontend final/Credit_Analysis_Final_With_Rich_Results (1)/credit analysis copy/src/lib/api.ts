@@ -36,9 +36,10 @@ export interface ApplicationHistory {
   business_type: string;
   loan_amount_requested: number;
   credit_score: number;
-  risk_level: string;
+  risk_level: "Low" | "Moderate" | "High" | "Very High";
   created_at: string;
 }
+
 
 /**
  * POST /predict

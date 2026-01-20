@@ -1,5 +1,5 @@
-import { ReactNode } from 'react';
-import Header from './Header';
+import { ReactNode } from "react";
+import Header from "./Header";
 
 interface LayoutProps {
   children: ReactNode;
@@ -7,16 +7,30 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative min-h-screen flex flex-col text-white overflow-x-hidden">
+
+      {/* BACKGROUND IMAGE */}
+      <div
+        className="fixed inset-0 -z-20 bg-cover bg-center"
+        style={{ backgroundImage: "url('/backend.jpg')" }}
+      />
+
+      {/* DARK GRADIENT OVERLAY (critical for contrast) */}
+      <div className="fixed inset-0 -z-10 bg-gradient-to-b from-black/70 via-black/60 to-black/80" />
+
+      {/* HEADER */}
       <Header />
-      <main className="container py-8">
+
+      {/* MAIN CONTENT */}
+      <main className="relative z-10 flex-grow container py-16">
         {children}
       </main>
-      <footer className="border-t bg-card/50 py-6">
-        <div className="container text-center text-sm text-muted-foreground">
-          <p>© 2024 CreditAI Smart Evaluation System. For authorized underwriter use only.</p>
-        </div>
+
+      {/* FOOTER */}
+      <footer className="relative z-10 py-6 text-center text-sm text-white/70">
+        © 2024 CreditAI Smart Evaluation System. For authorized underwriter use only.
       </footer>
+
     </div>
   );
 };

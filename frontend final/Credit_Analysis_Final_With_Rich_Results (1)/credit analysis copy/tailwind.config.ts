@@ -1,8 +1,14 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
-  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  content: [
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
+  ],
   prefix: "",
   theme: {
     container: {
@@ -14,14 +20,20 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ["Inter", "system-ui", "sans-serif"],
       },
+
+      /* =========================
+         COLOR SYSTEM
+         ========================= */
       colors: {
+        /* --- shadcn base tokens --- */
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -50,6 +62,8 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+
+        /* --- sidebar (keep untouched) --- */
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -60,6 +74,8 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+
+        /* --- risk colors (existing logic safe) --- */
         risk: {
           low: "hsl(var(--risk-low))",
           "low-bg": "hsl(var(--risk-low-bg))",
@@ -68,17 +84,38 @@ export default {
           high: "hsl(var(--risk-high))",
           "high-bg": "hsl(var(--risk-high-bg))",
         },
+
+        /* =========================
+           BRAND / PASTEL FINTECH THEME
+           ========================= */
+        brand: {
+          bg: "#F8F9FF",
+          surface: "#FFFFFF",
+          primary: "#6D6AF8",
+          secondary: "#EC6AC8",
+          accent: "#A7F3D0",
+          text: "#0F172A",
+          muted: "#64748B",
+        },
       },
+
+      /* =========================
+         RADIUS & SHADOWS
+         ========================= */
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
       boxShadow: {
-        'card': 'var(--shadow-card)',
-        'elevated': 'var(--shadow-md)',
-        'prominent': 'var(--shadow-lg)',
+        card: "var(--shadow-card)",
+        elevated: "var(--shadow-md)",
+        prominent: "var(--shadow-lg)",
       },
+
+      /* =========================
+         ANIMATIONS
+         ========================= */
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -105,5 +142,6 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
+
 } satisfies Config;
