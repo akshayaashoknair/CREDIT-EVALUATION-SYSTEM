@@ -1,13 +1,26 @@
 # Python
+venv/
 __pycache__/
 *.pyc
 
-# Database
-*.db
+# Environments
+.env
+backend final/smart-credit-evaluation-system/.env
+
+# OS files
+.DS_Store
+__MACOSX/
+._*
 
 # Node
 node_modules/
-**/node_modules/
 
-# OS
-.DS_Store
+# Build / cache
+dist/
+build/
+
+# Virtualenv anywhere
+**/venv/
+**/__MACOSX/
+
+

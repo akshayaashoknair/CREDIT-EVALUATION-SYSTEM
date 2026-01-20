@@ -1,8 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from typing import Dict, Any
-
-from backend.services.document_reader import extract_text_from_pdf
-from backend.services.document_reader import parse_bank_statement
+from backend.services.document_reader import extract_text_from_pdf, parse_bank_statement
 
 router = APIRouter()
 
@@ -15,7 +13,6 @@ async def upload_document(
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file uploaded")
 
-    # ✅ READ FILE BYTES (CRITICAL)
     try:
         content = await file.read()
         result = extract_text_from_pdf(content)
@@ -26,11 +23,24 @@ async def upload_document(
     confidence = {}
     warnings = []
 
-    # ✅ BANK STATEMENT PARSING
     if document_type == "bank_statement":
-        extracted_fields, confidence, warnings = parse_bank_statement(
-            result.get("raw_text_preview", "")
-        )
+        from backend.services.llm_extractor import extract_financials_with_llama
+
+        llm_result = extract_financials_with_llama(result["raw_text"])
+
+        extracted_fields = {
+            k: v for k, v in llm_result.items()
+            if k in ["monthly_cashflow", "annual_revenue", "existing_loans"]
+        }
+
+        confidence = {"overall": llm_result.get("confidence")}
+        warnings = llm_result.get("warnings", [])
+
+
+        # ✅ Sanity check MUST be here
+        if extracted_fields.get("monthly_cashflow", 0) < 1000:
+            warnings.append("Extracted cashflow is unrealistically low. Kindly check manually.")
+            extracted_fields.pop("monthly_cashflow", None)
 
     return {
         "document_type": document_type,
@@ -39,3 +49,4 @@ async def upload_document(
         "warnings": warnings,
         "raw_text_preview": result.get("raw_text_preview", "")
     }
+

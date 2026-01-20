@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+load_dotenv()
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field, validator
 import joblib
@@ -10,7 +12,7 @@ import json
 
 from database.db import SessionLocal
 from database.models import CreditApplication as CreditApplicationDB
-from backend.routes import document_upload
+
 
 # -------------------------------------------------
 # APP INIT
@@ -24,6 +26,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+from backend.routes import document_upload
 app.include_router(document_upload.router)
 
 # -------------------------------------------------
