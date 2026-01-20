@@ -28,6 +28,8 @@ app.add_middleware(
 )
 from backend.routes import document_upload
 app.include_router(document_upload.router)
+from backend.routes import report
+app.include_router(report.router)
 
 # -------------------------------------------------
 # LOAD ARTIFACTS

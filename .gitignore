@@ -23,4 +23,7 @@ build/
 **/venv/
 **/__MACOSX/
 
+# Database
+*.db
+
 
