@@ -114,7 +114,7 @@ const LoanApplication = () => {
 
       console.log("ABOUT TO SEND FETCH REQUEST");
 	  const response = await fetch(
-		"http://127.0.0.1:8000/upload-document/",
+		"http://127.0.0.1:8000/upload-document",
 		{
 			method: "POST",
 			body: formDataPayload,
@@ -129,19 +129,23 @@ const LoanApplication = () => {
       const data = await response.json();
 	  console.log("BACKEND RESPONSE:", data);
 
-      setFormData((prev) => ({
-        ...prev,
-        ...(data.annual_revenue && { annual_revenue: data.annual_revenue }),
-        ...(data.monthly_cashflow && {
-          monthly_cashflow: data.monthly_cashflow,
-        }),
-        ...(data.collateral_value && {
-          collateral_value: data.collateral_value,
-        }),
-        ...(data.existing_loans && {
-          existing_loans: data.existing_loans,
-        }),
-      }));
+      const extracted = data.extracted_fields || {};
+
+	setFormData((prev) => ({
+	  ...prev,
+	  ...(extracted.annual_revenue && {
+		annual_revenue: extracted.annual_revenue,
+	  }),
+	  ...(extracted.monthly_cashflow && {
+		monthly_cashflow: extracted.monthly_cashflow,
+	  }),
+	  ...(extracted.collateral_value && {
+		collateral_value: extracted.collateral_value,
+	  }),
+	  ...(extracted.existing_loans && {
+		existing_loans: extracted.existing_loans,
+	  }),
+	}));
 
       toast({
         title: "Document processed",
